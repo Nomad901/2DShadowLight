@@ -3,6 +3,7 @@
 #include <vector>
 #include <string>
 #include <algorithm>
+#include <unordered_map>
 
 #include <imgui.h>
 #include <imgui_impl_sdl3.h>
@@ -22,7 +23,7 @@ namespace Resources
     const uint32_t WIN_WIDTH{ 1280 }, WIN_HEIGHT{ 720 };
 
     uint32_t sCurrentBlock{};
-    int32_t sRadiusOfCircle{30};
+    int32_t sRadiusOfCircle{ 30 };
     uint32_t sDelay{ 16 };
 
     float sSpeedCircle{ 15.0f };
@@ -32,11 +33,13 @@ namespace Resources
 
     SDL_Window* sWindow{};
     SDL_Renderer* sRenderer{};
+    SDL_FRect sArena = { 10, 10, WIN_WIDTH - 20, WIN_HEIGHT - 20 };
 
     float sCircleColor[3] = { 1.0f, 1.0f, 1.0f };
     float sBlocksColor[3] = { 1.0f, 1.0f, 1.0f };
 
     std::vector<SDL_FRect> sBlocks;
+    std::unordered_map<SDL_Keycode, bool> sKeys;
 
     struct Vector2f
     {
@@ -50,21 +53,26 @@ void drawCircle()
     if (!Resources::filledCircle)
     {
         circleRGBA(Resources::sRenderer, Resources::sCirclePos.x, Resources::sCirclePos.y,
-                   Resources::sRadiusOfCircle,
-                   (uint8_t)(Resources::sCircleColor[0] * 255),
-                   (uint8_t)(Resources::sCircleColor[1] * 255),
-                   (uint8_t)(Resources::sCircleColor[2] * 255),
-                   255);
+            Resources::sRadiusOfCircle,
+            (uint8_t)(Resources::sCircleColor[0] * 255),
+            (uint8_t)(Resources::sCircleColor[1] * 255),
+            (uint8_t)(Resources::sCircleColor[2] * 255),
+            255);
     }
     else
     {
         filledCircleRGBA(Resources::sRenderer, Resources::sCirclePos.x, Resources::sCirclePos.y,
-                         Resources::sRadiusOfCircle,
-                         (uint8_t)(Resources::sCircleColor[0] * 255),
-                         (uint8_t)(Resources::sCircleColor[1] * 255),
-                         (uint8_t)(Resources::sCircleColor[2] * 255),
-                         255);
+            Resources::sRadiusOfCircle,
+            (uint8_t)(Resources::sCircleColor[0] * 255),
+            (uint8_t)(Resources::sCircleColor[1] * 255),
+            (uint8_t)(Resources::sCircleColor[2] * 255),
+            255);
     }
+}
+
+void drawArena()
+{
+    SDL_RenderRect(Resources::sRenderer, &Resources::sArena);
 }
 
 void manageControlImGui()
@@ -98,7 +106,7 @@ void manageControlImGui()
         if (!tmpVctr.empty())
         {
             tmpVctr.erase(tmpVctr.begin() + Resources::sCurrentBlock);
-            Resources::sCurrentBlock = tmpVctr.size()-1;
+            Resources::sCurrentBlock = tmpVctr.size() - 1;
         }
     }
 
@@ -130,7 +138,7 @@ void manageControlImGui()
 
         ImGui::Spacing();
         ImGui::Separator();
-        
+
         for (size_t i = 0; i < Resources::sBlocks.size(); ++i)
         {
             if (ImGui::Button(std::to_string(i).c_str()))
@@ -155,13 +163,14 @@ void manageControlImGui()
 
     ImGui::SliderInt("Radius", &Resources::sRadiusOfCircle, 10, 100);
 
+
     ImGui::Spacing();
-    
+
     ImGui::Checkbox("Filled circle", &Resources::filledCircle);
 
     ImGui::Spacing();
     ImGui::Separator();
-    
+
     ImGui::ColorEdit3("Color", Resources::sCircleColor);
 
     ImGui::Spacing();
@@ -196,7 +205,7 @@ void controlBlocks(const SDL_Event& pEvents)
         break;
     case SDL_EVENT_MOUSE_WHEEL:
         if (Resources::sBlocks.empty()) break;
-        
+
         auto multiplier = pEvents.wheel.y > 0 ? 5 : -5;
 
         if (Resources::affectOnAll)
@@ -217,23 +226,25 @@ void controlBlocks(const SDL_Event& pEvents)
     }
 }
 
-void controlCircle(const bool*& pState)
+void controlCircle()
 {
     float speed = Resources::sSpeedCircle * Resources::sMultiplierSpeed;
-    if (pState[SDL_SCANCODE_W])
+    // and here we are trying to get access to our key which we pressed
+    // in addition it happens each frame
+    if (Resources::sKeys[SDLK_W])
         Resources::sCirclePos.y -= speed;
-    if (pState[SDL_SCANCODE_S])
+    if (Resources::sKeys[SDLK_S])
         Resources::sCirclePos.y += speed;
-    if (pState[SDL_SCANCODE_D])
+    if (Resources::sKeys[SDLK_D])
         Resources::sCirclePos.x += speed;
-    if (pState[SDL_SCANCODE_A])
+    if (Resources::sKeys[SDLK_A])
         Resources::sCirclePos.x -= speed;
 
-    Resources::sCirclePos.x = std::clamp(Resources::sCirclePos.x, 0.0f, (float) Resources::WIN_WIDTH);
-    Resources::sCirclePos.y = std::clamp(Resources::sCirclePos.y, 0.0f, (float) Resources::WIN_HEIGHT);
+    Resources::sCirclePos.x = std::clamp(Resources::sCirclePos.x, Resources::sArena.x, Resources::sArena.w);
+    Resources::sCirclePos.y = std::clamp(Resources::sCirclePos.y, Resources::sArena.y, Resources::sArena.h);
 }
 
-int main(int argc, char* argv[]) 
+int main(int argc, char* argv[])
 {
     //
     //  SDL3 Part
@@ -266,14 +277,24 @@ int main(int argc, char* argv[])
     {
         SDL_Event event;
         SDL_GetMouseState(&Resources::sVector2f.x, &Resources::sVector2f.y);
-        auto keyboardState = SDL_GetKeyboardState(NULL);
+        int32_t numKeys = 0;
+        SDL_GetKeyboardState(&numKeys);
+        Resources::sKeys.reserve(numKeys);
         while (SDL_PollEvent(&event))
         {
             ImGui_ImplSDL3_ProcessEvent(&event);
-            
+
             controlBlocks(event);
-            controlCircle(keyboardState);
+            // moving without delay in the beginning: 
+            // here we set true for a key, which we pressed
+            // it doesnt happen each frame, thats the reason of delaying 
+            // at the beginning of moving
+            if (event.type == SDL_EVENT_KEY_DOWN)
+                Resources::sKeys[event.key.key] = true;
+            if (event.type == SDL_EVENT_KEY_UP)
+                Resources::sKeys[event.key.key] = false;
         }
+        controlCircle();
         SDL_SetRenderDrawColor(Resources::sRenderer, 0, 0, 0, 255);
         SDL_RenderClear(Resources::sRenderer);
         SDL_SetRenderDrawColor(Resources::sRenderer, (uint8_t)(Resources::sBlocksColor[0] * 255),
@@ -281,7 +302,8 @@ int main(int argc, char* argv[])
                                                      (uint8_t)(Resources::sBlocksColor[2] * 255),
                                                      255);
         // getting time of the first frame
-        float firstFrame = (float) SDL_GetTicks();
+        float firstFrame = (float)SDL_GetTicks();
+
 
         if (!Resources::sBlocks.empty() &&
             Resources::shouldMove)
@@ -304,33 +326,33 @@ int main(int argc, char* argv[])
         ImGui::Render();
         ImGui_ImplSDLRenderer3_RenderDrawData(ImGui::GetDrawData(), Resources::sRenderer);
 
-
+        drawArena();
         drawCircle();
         SDL_RenderPresent(Resources::sRenderer);
 
         // setting the proper delay
-        float deltaTime = (float) SDL_GetTicks() - firstFrame;
+        float deltaTime = (float)SDL_GetTicks() - firstFrame;
         // if deltaTime > 16 - then we will miss slowing our program down
         // if deltaTime < 16 - we will slow it down. Like 16 - deltatime
         // and we will get a desired number which can help slow our program down
         if (deltaTime < Resources::sDelay) // let it be 8 and 16
-            SDL_Delay((Uint32) (Resources::sDelay - deltaTime)); // 16-8 = 8 
+            SDL_Delay((Uint32)(Resources::sDelay - deltaTime)); // 16-8 = 8 
         // in order to make our fps properly, we need to slow down our program on 8 miliseconds 
         // with this equation we can do this 
 
         // multiplications for circle's speed
-        float currentTime = (float) SDL_GetTicks(); // current time of the frame
+        float currentTime = (float)SDL_GetTicks(); // current time of the frame
         float deltaTime2 = currentTime - Resources::sLastFrameRate; // delta time from the last frame. usually it 16 fps which we set 
         Resources::sLastFrameRate = currentTime; // setting our frame as a last frame
 
         // cap delta time to prevent jumps
-        const float MAX_DELTA_TIME = 50.0f;  
-        if (deltaTime2 > MAX_DELTA_TIME) 
+        const float MAX_DELTA_TIME = 50.0f;
+        if (deltaTime2 > MAX_DELTA_TIME)
             deltaTime2 = MAX_DELTA_TIME;
-        
+
         // convert to seconds and apply speed multiplier
         Resources::sMultiplierSpeed = deltaTime2 * Resources::sTimeDoubler * 0.001f;
-    } 
+    }
 
     ImGui_ImplSDL3_Shutdown();
     ImGui_ImplSDLRenderer3_Shutdown();
