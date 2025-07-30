@@ -1,0 +1,51 @@
+Which map to use for the project:
+i can just create random blocks, set them, change color and so on. this i can control through imgui; 
+
+usage of imgui:
+i will have 2 windows in imgui. first for the blocks, second for the circle(the source of light);
+what i will include: 
+for blocks:
+-changing color. changing dimensions all blocks. changing dimension an exact block, delete exact block 
+for the light:
+-changing color. changing dimension. changing dimension of the light, like how far the light will be lighting. changing speed
+
+control: 
+mouse - setting blocks. Imgui will resolve problem with appending/deleting
+keyboard - imgui, controlling the block
+
+Goals: 
+- make smooth control / moving
+- make 2d light with shadows
+- pin up usage of ImGui
+- learn SDL3
+
+
+First of all try to build this in one file. cuz this project isn't that big for creating multiple files in fact.
+
+
+Steps for getting all of this:
+Blocks
+- Make system of appending block via the mouse - done
+- Try to insert ImGui into this system - done
+- Implement in ImGui: 
+  - setting a current block to work, if empty - will affect on all blocks - done
+  - appending blocks (Click and at the cursor we can set our block) - done on the right button of the mouse
+  - delete blocks (we can just write down the number and accept. if it more, than size of the vector -    		   delete the last appended) - done 
+  - changing colors - done
+  - changing dimension (w, y) - done via the wheel
+  - clear all blocks at once - done
+Circle
+- Create a circle, which will be a source of light
+- Create smooth moving for this circle 
+- create a light of the circle
+- create a collision detector for the circle
+- create imgui for this circle
+- Implement in imgui:
+  - Color of the light
+  - dimension of the light 
+  - speed of moving of the circle 
+
+Final step:
+- use math for creating rays in order to correlate this with the circle and the blocks
+
+ 
