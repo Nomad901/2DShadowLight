@@ -4,6 +4,8 @@
 #include <string>
 #include <algorithm>
 #include <unordered_map>
+#include <expected>
+#include <span>
 
 #include <imgui.h>
 #include <imgui_impl_sdl3.h>
@@ -24,7 +26,7 @@ namespace Resources
 
     uint32_t sCurrentBlock{};
     int32_t sRadiusOfCircle{ 30 };
-    uint32_t sDelay{ 16 };
+    uint32_t sDelay{ 14 };
 
     float sSpeedCircle{ 15.0f };
     float sMultiplierSpeed{ 1.0f };
@@ -33,7 +35,6 @@ namespace Resources
 
     SDL_Window* sWindow{};
     SDL_Renderer* sRenderer{};
-    SDL_FRect sArena = { 10, 10, WIN_WIDTH - 20, WIN_HEIGHT - 20 };
 
     float sCircleColor[3] = { 1.0f, 1.0f, 1.0f };
     float sBlocksColor[3] = { 1.0f, 1.0f, 1.0f };
@@ -44,205 +45,185 @@ namespace Resources
     struct Vector2f
     {
         float x{ WIN_WIDTH / 2 }, y{ WIN_HEIGHT / 2 };
+
+        float distanceTo(Vector2f pOther)
+        {
+            float dx = x - pOther.x;
+            float dy = y - pOther.y;
+            return sqrt(dx * dx + dy * dy);
+        }
+
     } sVector2f;
-    Vector2f sCirclePos;
+    Vector2f sCirclePos{};
+    
 }
 
-void drawCircle()
+class Wall
 {
-    if (!Resources::filledCircle)
+public:
+    Wall(Resources::Vector2f pBeginningPos, Resources::Vector2f pEndPos)
     {
-        circleRGBA(Resources::sRenderer, Resources::sCirclePos.x, Resources::sCirclePos.y,
-            Resources::sRadiusOfCircle,
-            (uint8_t)(Resources::sCircleColor[0] * 255),
-            (uint8_t)(Resources::sCircleColor[1] * 255),
-            (uint8_t)(Resources::sCircleColor[2] * 255),
-            255);
+        mBeginningWall = pBeginningPos;
+        mEndWall = pEndPos;
     }
-    else
-    {
-        filledCircleRGBA(Resources::sRenderer, Resources::sCirclePos.x, Resources::sCirclePos.y,
-            Resources::sRadiusOfCircle,
-            (uint8_t)(Resources::sCircleColor[0] * 255),
-            (uint8_t)(Resources::sCircleColor[1] * 255),
-            (uint8_t)(Resources::sCircleColor[2] * 255),
-            255);
-    }
-}
 
-void drawArena()
+    void setBeginningPos(Resources::Vector2f pBeginningPos)
+    {
+        mBeginningWall = pBeginningPos;
+    }
+    void setEndPos(Resources::Vector2f pEndPos)
+    {
+        mEndWall = pEndPos;
+    }
+    Resources::Vector2f getBeginningPos()
+    {
+        return mBeginningWall;
+    }
+    Resources::Vector2f getEndPos()
+    {
+        return mEndWall;
+    }
+
+    void render()
+    {
+        SDL_RenderLine(Resources::sRenderer, mBeginningWall.x, mBeginningWall.y, mEndWall.x, mEndWall.y);
+    }
+
+private:
+    Resources::Vector2f mBeginningWall{};
+    Resources::Vector2f mEndWall{};
+};
+
+class Ray
 {
-    SDL_RenderRect(Resources::sRenderer, &Resources::sArena);
-}
+public:
+    Ray(Resources::Vector2f pBeginningPos, Resources::Vector2f pEndPos, float pAngle)
+    {
+        mBeginningRay = pBeginningPos;
 
-void manageControlImGui()
+        const float length = 50.0f;
+        mEndRay.x = pEndPos.x + length * cosf(pAngle);
+        mEndRay.y = pEndPos.y + length * sinf(pAngle);
+    }
+
+    void setBeginningPos(Resources::Vector2f pBeginningPos)
+    {
+        mBeginningRay = pBeginningPos;
+    }
+    void setEndPos(Resources::Vector2f pEndPos)
+    {
+        mEndRay = pEndPos;
+    }
+    void setEndPos(Resources::Vector2f pEndPos, float pAngle)
+    {
+        const float length = 50.0f;
+        mEndRay.x = pEndPos.x + length * cosf(pAngle);
+        mEndRay.y = pEndPos.y + length * sinf(pAngle);
+    }
+    Resources::Vector2f getBeginningPos()
+    {
+        return mBeginningRay;
+    }
+    Resources::Vector2f getEndPos()
+    {
+        return mEndRay;
+    }
+
+    auto collide(Wall pWall) -> std::expected<Resources::Vector2f, bool>
+    {
+        const float x1 = pWall.getBeginningPos().x;
+        const float y1 = pWall.getBeginningPos().y;
+        const float x2 = pWall.getEndPos().x;
+        const float y2 = pWall.getEndPos().y;
+
+        const float x3 = mBeginningRay.x;
+        const float y3 = mBeginningRay.y;
+        const float x4 = mEndRay.x;
+        const float y4 = mEndRay.y;
+
+        float den = (x1 - x2) * (y3 - y4) - (y1 - y2) * (x3 - x4);
+        if (den == 0)
+            return std::unexpected(false);
+
+        mT = ((x1 - x3) * (y3 - y4) - (y1 - y3) * (x3 - x4)) / den;
+        mU = -((x1 - x2) * (y1 - y3) - (y1 - y2) * (x1 - x3)) / den;
+   
+        if (mT > 0 && mT < 1 && mU > 0)
+        {
+            Resources::Vector2f pointVctr = { x1 + mT * (x2 - x1), 
+                                              y1 + mT * (y2 - y1) };
+            return pointVctr;
+        }
+        return std::unexpected(false);
+    }
+
+    void render()
+    {
+        SDL_RenderLine(Resources::sRenderer, mBeginningRay.x, mBeginningRay.y, mEndRay.x, mEndRay.y);
+    }
+
+private:
+    Resources::Vector2f mBeginningRay{};
+    Resources::Vector2f mEndRay{};
+
+    float mT{}, mU{};
+};
+
+class Particle
 {
-    //
-    // Config for the blocks
-    //
-    static bool firstTime = true;
-    static bool anotherWindow = false;
-    if (firstTime)
+public:
+    Particle()
     {
-        ImGui::SetNextWindowPos({ 100,100 });
-        ImGui::SetNextWindowSize({ 520,180 });
-    }
-    ImGui::Begin("Control blocks", &Resources::isActive);
-
-    ImGui::Text("Small instruction: Right click - add new block");
-
-    ImGui::Spacing();
-    ImGui::Separator();
-
-    ImGui::Checkbox("Choose an exact block", &anotherWindow);
-
-    ImGui::Spacing();
-
-    if (ImGui::Button("Delete All blocks"))
-        Resources::sBlocks.clear();
-    if (ImGui::Button("Delete the exact block (choose this in the second window)"))
-    {
-        auto& tmpVctr = Resources::sBlocks;
-        if (!tmpVctr.empty())
+        Resources::Vector2f pos = { 500, 400 };
+        mStrgRays.reserve(40);
+        for (int32_t i = 0; i < 40; i++)
         {
-            tmpVctr.erase(tmpVctr.begin() + Resources::sCurrentBlock);
-            Resources::sCurrentBlock = tmpVctr.size() - 1;
+            Ray newRay = { Resources::sVector2f, {500,400}, float(float(i) * 3.14 / M_PI)};
+            mStrgRays.emplace_back(std::move(newRay));
         }
     }
 
-    ImGui::Spacing();
-    ImGui::Separator();
-
-    ImGui::ColorEdit3("Changing color of blocks", Resources::sBlocksColor);
-
-    ImGui::Spacing();
-    ImGui::Spacing();
-
-    ImGui::End();
-
-    //
-    // Choosing an exact block
-    //
-    if (anotherWindow)
+    void update()
     {
-        static bool firstTime2 = true;
-        if (firstTime2)
+        for (int32_t i = 0; i < std::ssize(mStrgRays); ++i)
         {
-            ImGui::SetNextWindowPos({ 200,200 });
-            ImGui::SetNextWindowSize({ 200,400 });
-            firstTime2 = false;
+            mStrgRays[i].setBeginningPos(Resources::sVector2f);
+            mStrgRays[i].setEndPos({ Resources::sVector2f.x +10,Resources::sVector2f.y + 10 }, float(i));
+            mStrgRays[i].render();
         }
-        ImGui::Begin("Choosing Block", &anotherWindow);
-
-        ImGui::Checkbox("Affect on all", &Resources::affectOnAll);
-
-        ImGui::Spacing();
-        ImGui::Separator();
-
-        for (size_t i = 0; i < Resources::sBlocks.size(); ++i)
-        {
-            if (ImGui::Button(std::to_string(i).c_str()))
-                Resources::sCurrentBlock = i;
-        }
-
-        ImGui::End();
     }
-
-    //
-    // Circle config
-    //
-    if (firstTime)
+    void render(std::span<Wall> pWall)
     {
-        ImGui::SetNextWindowPos({ 400,400 });
-        ImGui::SetNextWindowSize({ 300,300 });
-        firstTime = false;
-    }
-    ImGui::Begin("Circle config", &Resources::isActive);
-
-    ImGui::Spacing();
-
-    ImGui::SliderInt("Radius", &Resources::sRadiusOfCircle, 10, 100);
-
-
-    ImGui::Spacing();
-
-    ImGui::Checkbox("Filled circle", &Resources::filledCircle);
-
-    ImGui::Spacing();
-    ImGui::Separator();
-
-    ImGui::ColorEdit3("Color", Resources::sCircleColor);
-
-    ImGui::Spacing();
-    ImGui::Separator();
-
-    //ImGui::SliderFloat("Speed", &Resources::sSpeedCircle, 0.1f, 100.0f);
-    ImGui::SliderFloat("Speed", &Resources::sTimeDoubler, 0.1f, 100.0f);
-
-    ImGui::Spacing();
-    ImGui::Separator();
-
-    ImGui::End();
-}
-
-void controlBlocks(const SDL_Event& pEvents)
-{
-    switch (pEvents.type)
-    {
-    case SDL_EVENT_QUIT:
-        Resources::isActive = false;
-        break;
-    case SDL_EVENT_MOUSE_BUTTON_UP:
-        if (pEvents.button.button == SDL_BUTTON_RIGHT)
+        for (auto& ray : mStrgRays)
         {
-            Resources::sBlocks.push_back({ Resources::sVector2f.x, Resources::sVector2f.y, 100,100 });
-            Resources::shouldMove = true;
-        }
-        if (pEvents.button.button == SDL_BUTTON_LEFT)
-        {
-            Resources::shouldMove = false;
-        }
-        break;
-    case SDL_EVENT_MOUSE_WHEEL:
-        if (Resources::sBlocks.empty()) break;
-
-        auto multiplier = pEvents.wheel.y > 0 ? 5 : -5;
-
-        if (Resources::affectOnAll)
-        {
-            for (auto& i : Resources::sBlocks)
+            Resources::Vector2f closest = { -100.0f,-100.0f };
+            float record = std::numeric_limits<float>::infinity();
+            for (auto& wall : pWall)
             {
-                i.w += multiplier;
-                i.h += multiplier;
+                wall.render();
+                ray.render();
+                auto value = ray.collide(wall);
+                if (value.has_value())
+                {
+                    float distance = ray.getBeginningPos().distanceTo(*value);
+                    if (distance < record)
+                    {
+                        record = distance;
+                        closest = *value;
+                    }
+                }
             }
+            if (record < std::numeric_limits<float>::infinity())
+            {
+                SDL_RenderLine(Resources::sRenderer, ray.getBeginningPos().x, ray.getBeginningPos().y, closest.x, closest.y);
+            }
+            filledCircleRGBA(Resources::sRenderer, Resources::sVector2f.x, Resources::sVector2f.y, 10, 255, 255, 255, 255);
         }
-        else
-        {
-            Resources::sBlocks[Resources::sCurrentBlock].w += multiplier;
-            Resources::sBlocks[Resources::sCurrentBlock].h += multiplier;
-        }
-
-        break;
     }
-}
 
-void controlCircle()
-{
-    float speed = Resources::sSpeedCircle * Resources::sMultiplierSpeed;
-    // and here we are trying to get access to our key which we pressed
-    // in addition it happens each frame
-    if (Resources::sKeys[SDLK_W])
-        Resources::sCirclePos.y -= speed;
-    if (Resources::sKeys[SDLK_S])
-        Resources::sCirclePos.y += speed;
-    if (Resources::sKeys[SDLK_D])
-        Resources::sCirclePos.x += speed;
-    if (Resources::sKeys[SDLK_A])
-        Resources::sCirclePos.x -= speed;
-
-    Resources::sCirclePos.x = std::clamp(Resources::sCirclePos.x, Resources::sArena.x, Resources::sArena.w);
-    Resources::sCirclePos.y = std::clamp(Resources::sCirclePos.y, Resources::sArena.y, Resources::sArena.h);
-}
+private:
+    std::vector<Ray> mStrgRays;
+};
 
 int main(int argc, char* argv[])
 {
@@ -256,22 +237,18 @@ int main(int argc, char* argv[])
     }
     Resources::sWindow = SDL_CreateWindow("2D light", Resources::WIN_WIDTH, Resources::WIN_HEIGHT, SDL_WINDOW_RESIZABLE);
     Resources::sRenderer = SDL_CreateRenderer(Resources::sWindow, NULL);
-    // ----------
-    Resources::sBlocks.reserve(30);
-    // 
-    // ImGui part
-    //
-    IMGUI_CHECKVERSION();
-    ImGui::CreateContext();
-    ImGuiIO& tmpIo = ImGui::GetIO();
+    std::vector<Wall> strgWalls
+    {
+        {{1000,200}, {1000,600}},
+        {{500, 200}, {500,600}},
+        {{432,213}, {54,34}},
+        {{10, 10}, {1200, 10}},
+        {{10,10}, {10, 1200 }},
+        {{1200, 10}, {10, 1200}},
+        {{10,1200}, {1200, 10}}
+    };
 
-    tmpIo.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
-    tmpIo.IniFilename = NULL;
-
-    ImGui::StyleColorsDark();
-    ImGui_ImplSDL3_InitForSDLRenderer(Resources::sWindow, Resources::sRenderer);
-    ImGui_ImplSDLRenderer3_Init(Resources::sRenderer);
-
+    Particle particle;
     // ----------
     while (Resources::isActive)
     {
@@ -280,83 +257,33 @@ int main(int argc, char* argv[])
         int32_t numKeys = 0;
         SDL_GetKeyboardState(&numKeys);
         Resources::sKeys.reserve(numKeys);
+        static int32_t counter = 10;
         while (SDL_PollEvent(&event))
         {
-            ImGui_ImplSDL3_ProcessEvent(&event);
-
-            controlBlocks(event);
-            // moving without delay in the beginning: 
-            // here we set true for a key, which we pressed
-            // it doesnt happen each frame, thats the reason of delaying 
-            // at the beginning of moving
-            if (event.type == SDL_EVENT_KEY_DOWN)
-                Resources::sKeys[event.key.key] = true;
-            if (event.type == SDL_EVENT_KEY_UP)
-                Resources::sKeys[event.key.key] = false;
+            if (event.type == SDL_EVENT_QUIT)
+            {
+                Resources::isActive = false;
+                break;
+            }
         }
-        controlCircle();
         SDL_SetRenderDrawColor(Resources::sRenderer, 0, 0, 0, 255);
         SDL_RenderClear(Resources::sRenderer);
         SDL_SetRenderDrawColor(Resources::sRenderer, (uint8_t)(Resources::sBlocksColor[0] * 255),
                                                      (uint8_t)(Resources::sBlocksColor[1] * 255),
                                                      (uint8_t)(Resources::sBlocksColor[2] * 255),
-                                                     255);
-        // getting time of the first frame
+                                                     1);
         float firstFrame = (float)SDL_GetTicks();
-
-
-        if (!Resources::sBlocks.empty() &&
-            Resources::shouldMove)
-        {
-            Resources::sBlocks[Resources::sBlocks.size() - 1].x = Resources::sVector2f.x;
-            Resources::sBlocks[Resources::sBlocks.size() - 1].y = Resources::sVector2f.y;
-        }
-        for (auto& i : Resources::sBlocks)
-        {
-            SDL_RenderRect(Resources::sRenderer, &i);
-        }
-
-        ImGui_ImplSDL3_NewFrame();
-        ImGui_ImplSDLRenderer3_NewFrame();
-        ImGui::NewFrame();
-
-        manageControlImGui();
-
-        ImGui::EndFrame();
-        ImGui::Render();
-        ImGui_ImplSDLRenderer3_RenderDrawData(ImGui::GetDrawData(), Resources::sRenderer);
-
-        drawArena();
-        drawCircle();
+        
+        
+        //wall.render();
+        particle.update();
+        particle.render(strgWalls);
         SDL_RenderPresent(Resources::sRenderer);
 
-        // setting the proper delay
         float deltaTime = (float)SDL_GetTicks() - firstFrame;
-        // if deltaTime > 16 - then we will miss slowing our program down
-        // if deltaTime < 16 - we will slow it down. Like 16 - deltatime
-        // and we will get a desired number which can help slow our program down
-        if (deltaTime < Resources::sDelay) // let it be 8 and 16
-            SDL_Delay((Uint32)(Resources::sDelay - deltaTime)); // 16-8 = 8 
-        // in order to make our fps properly, we need to slow down our program on 8 miliseconds 
-        // with this equation we can do this 
-
-        // multiplications for circle's speed
-        float currentTime = (float)SDL_GetTicks(); // current time of the frame
-        float deltaTime2 = currentTime - Resources::sLastFrameRate; // delta time from the last frame. usually it 16 fps which we set 
-        Resources::sLastFrameRate = currentTime; // setting our frame as a last frame
-
-        // cap delta time to prevent jumps
-        const float MAX_DELTA_TIME = 50.0f;
-        if (deltaTime2 > MAX_DELTA_TIME)
-            deltaTime2 = MAX_DELTA_TIME;
-
-        // convert to seconds and apply speed multiplier
-        Resources::sMultiplierSpeed = deltaTime2 * Resources::sTimeDoubler * 0.001f;
+        if (deltaTime < Resources::sDelay) 
+            SDL_Delay((Uint32)(Resources::sDelay - deltaTime)); 
     }
-
-    ImGui_ImplSDL3_Shutdown();
-    ImGui_ImplSDLRenderer3_Shutdown();
-    ImGui::DestroyContext();
 
     SDL_DestroyWindow(Resources::sWindow);
     SDL_DestroyRenderer(Resources::sRenderer);
