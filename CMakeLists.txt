@@ -1,17 +1,17 @@
 cmake_minimum_required(VERSION 3.16)
-set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED TRUE)
+
+set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 
 #if debug - turn this off
 #if release - turn this on
 set(PRODUCTION_BUILD OFF CACHE BOOL "MAKE THIS A PRODUCTION BUILD" FORCE)
-
 set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Release>:Release>")
 set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
 
 set(SDL_SHARED OFF CACHE BOOL "Static SDL3" FORCE)
 set(SDL_STATIC ON CACHE BOOL "Static SDL3" FORCE)
-
 set(IMGUI_INCLUDE_DIR "./thirdparty/imgui")
 set(IMGUI_BACKENDS_INCLUDE_DIR "./thirdparty/imgui/backends")
 set(SDL3_INCLUDE_DIR "./thirdparty/SDL3/include")
@@ -22,7 +22,11 @@ set(SDL3_IMAGE_INCLUDE_DIR "${SDL3_IMAGE_DIR}/include")
 set(SDL3_LIB SDL3::SDL3)  
 
 add_subdirectory("thirdparty/SDL3" EXCLUDE_FROM_ALL)
+set_target_properties(SDL3-static PROPERTIES FOLDER "CMakePredefinedTargets")
+set_target_properties(SDL_uclibc PROPERTIES FOLDER "CMakePredefinedTargets")
 add_subdirectory("thirdparty/SDL3_gfx")
+set_target_properties(SDL3_gfx_Shared PROPERTIES FOLDER "CMakePredefinedTargets")
+set_target_properties(SDL3_gfx_Static PROPERTIES FOLDER "CMakePredefinedTargets")
 
 # might give you problems on Linux
 if(PRODUCTION_BUILD)
@@ -42,7 +46,15 @@ else()
 	set(BUILD_LIB_FLAG STATIC)
 endif()
 
-file(GLOB_RECURSE MY_SOURCES CMAKE_CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp")
+file(GLOB_RECURSE MY_SOURCES 
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/*.c"
+)
+file(GLOB_RECURSE MY_HEADERS 
+    "${CMAKE_CURRENT_SOURCE_DIR}/include/*.h"
+    "${CMAKE_CURRENT_SOURCE_DIR}/include/*.hpp"
+)
+
 # this version doesnt work, cuz it includes ALL headers and sources
 # and some of them are demanding an exact platform; for istance:
 # if i do this like that, it will be complaining on divergence with android platform 
@@ -71,11 +83,12 @@ else()
 	target_compile_definitions("${CMAKE_PROJECT_NAME}" PUBLIC DEVELOPMENT_BUILD=1)
 endif()
 
-target_sources("${PROJECT_NAME}" PRIVATE "${MY_SOURCES}")
+target_sources("${PROJECT_NAME}" PRIVATE "${MY_SOURCES}" "${MY_HEADERS}")
 
 #when a file doesnt have cmakeLists.txt, but does have cmake folder
 message(STATUS "${PROJECT_NAME}: creating ImGui")
 add_library(imgui "${BUILD_LIB_FLAG}" "${IMGUI_SOURCE_FILES}" "${IMGUI_HEADER_FILES}")
+set_target_properties(imgui PROPERTIES FOLDER "CMakePredefinedTargets")
 
 message(STATUS "${PROJECT_NAME}: creating SDL3_image")
 add_library(SDL3_image SHARED IMPORTED)
@@ -104,6 +117,7 @@ if(WIN32)
         COMMENT "Copying DLLs to executable directory"
     )
 endif()
+
 if(TARGET SDL3::SDL3main)
 	target_link_libraries("${PROJECT_NAME}" PUBLIC SDL3::SDL3main)
 endif()

@@ -35,15 +35,18 @@ Blocks
   - changing dimension (w, y) - done via the wheel
   - clear all blocks at once - done
 Circle
-- Create a circle, which will be a source of light
-- Create smooth moving for this circle 
-- create a light of the circle
-- create a collision detector for the circle
-- create imgui for this circle
+- Create a circle, which will be a source of light - done
+- Create smooth moving for this circle - done
+- create a light of the circle 
+- create imgui for this circle 
 - Implement in imgui:
   - Color of the light
   - dimension of the light 
   - speed of moving of the circle 
+
+Addition idea:
+- make a narrow source of light, i mean i can only look at an exact side and there will be ligting 
+
 
 Final step:
 - use math for creating rays in order to correlate this with the circle and the blocks
