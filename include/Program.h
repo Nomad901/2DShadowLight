@@ -9,6 +9,7 @@
 #include <unordered_map>
 #include <expected>
 #include <functional>
+#include <span>
 
 #include <imgui.h>
 #include <imgui_impl_sdl3.h>

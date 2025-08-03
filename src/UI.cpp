@@ -21,7 +21,8 @@ const float UI::getTimeDoubler() const noexcept
 
 void UI::control(const SDL_Event& pEvent, bool pActiveProg,
                  float pColors[3], float pCircleColor[3],
-                 Blocks& pBlocks, Circle& pCircle)
+                 Blocks& pBlocks, Circle& pCircle,
+                 bool& pFilledBlocks)
 {
     ImGui_ImplSDL3_NewFrame();
     ImGui_ImplSDLRenderer3_NewFrame();
@@ -57,6 +58,7 @@ void UI::control(const SDL_Event& pEvent, bool pActiveProg,
     ImGui::Separator();
 
     ImGui::ColorEdit3("Changing color of blocks", pColors);
+    ImGui::Checkbox("Fill the blocks", &pFilledBlocks);
 
     ImGui::Spacing();
     ImGui::Spacing();

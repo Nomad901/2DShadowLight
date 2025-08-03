@@ -1,6 +1,7 @@
 #pragma once
-#include <Ray.h>
 #include <UI.h>
+#include <Walls.h>
+#include <FactoryRays.h>
 
 enum class FuncType
 {
@@ -30,20 +31,25 @@ private:
 
 private:
 	bool mIsActive{true};
+	bool mFilledBlocks{ false };
+
 	float mDelay{ 16 };
 	mutable float mLastFrameRate{};
-	float mBlocksColor[3];
-	float mCircleColor[3];
 
-	int32_t mWidthWin{}, mHeightWin{};
+	float mBlocksColor[3]{ 0.3f, 0.2f, 0.5f };
+	float mCircleColor[3]{ 1.0f, 1.0f, 1.0f };
+
+	int32_t mWidthWin{ 1280 }, mHeightWin{ 720 };
 
 	SDL_Renderer* mRenderer{};
 	SDL_Window* mWindow{};
 	
+	FactoryRays mFactoryRays;
+	Walls mWalls;
 	Blocks mBlock;
 	mutable Circle mCircle;
-	Ray mRay;
 	UI mUI;
+
 	Vector2f mMousePos;
 };
 

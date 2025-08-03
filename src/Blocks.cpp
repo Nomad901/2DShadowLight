@@ -84,12 +84,12 @@ void Blocks::setCurrentBlock(size_t pCurrentBlock) noexcept
     mCurrentBlock = pCurrentBlock;
 }
 
-size_t Blocks::getCurrentBlock() noexcept
+size_t Blocks::getCurrentBlock() const noexcept
 {
     return mCurrentBlock;
 }
 
-const std::vector<SDL_FRect> Blocks::getStorage() noexcept
+std::vector<SDL_FRect>& Blocks::getStorage()
 {
     return mBlocks;
 }
@@ -115,14 +115,14 @@ void Blocks::render(SDL_Renderer* pRenderer, bool pFilled)
     {
         for (auto& i : mBlocks)
         {
-            SDL_RenderRect(pRenderer, &i);
+            SDL_RenderFillRect(pRenderer, &i);
         }
     }
     else
     {
         for (auto& i : mBlocks)
         {
-            SDL_RenderFillRect(pRenderer, &i);
+            SDL_RenderRect(pRenderer, &i);
         }
     }
 }

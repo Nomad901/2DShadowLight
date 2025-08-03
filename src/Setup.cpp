@@ -9,9 +9,16 @@ Setup::Setup(int32_t pWidthWin, int32_t pHeightWin)
     }
     mWindow = SDL_CreateWindow("2D light", pWidthWin, pHeightWin, SDL_WINDOW_RESIZABLE);
     mRenderer = SDL_CreateRenderer(mWindow, NULL);
+
+    mWidthWin = pWidthWin;
+    mHeightWin = pHeightWin;
+
     mUI.init(mWindow, mRenderer);
     mBlock.init(30);
+    mWalls.createArena({ float(pWidthWin),float(pHeightWin) });
     mCircle.init(20, { float(pWidthWin) / 2, float(pHeightWin) / 2 });
+    mFactoryRays.pushRay({ mCircle.getPos().x, mCircle.getPos().y }, { .0f,.0f });
+    mFactoryRays.pushRays({ mCircle.getPos().x, mCircle.getPos().y }, { .0f,.0f }, 100, 50.0f);
 }
 
 Setup::~Setup()
@@ -72,8 +79,11 @@ void Setup::run()
                 mCircle.getStorageKeycodes()[event.key.key] = true;
             if (event.type == SDL_EVENT_KEY_UP)
                 mCircle.getStorageKeycodes()[event.key.key] = false;
+            
+            mBlock.control(event);
         }
         mCircle.control(5, mWidthWin, mHeightWin);
+        mWalls.createWallsFromBlocks(mBlock.getStorage());
 
         SDL_SetRenderDrawColor(mRenderer, 0, 0, 0, 255);
         SDL_RenderClear(mRenderer);
@@ -83,15 +93,17 @@ void Setup::run()
                                           255);
         const float firstFrame = (float)SDL_GetTicks();
 
-        mUI.control(event, mIsActive, mBlocksColor, mCircleColor, mBlock, mCircle);
+        mUI.control(event, mIsActive, mBlocksColor, mCircleColor, mBlock, mCircle, mFilledBlocks);
 
-        mBlock.control(event);
         mBlock.update(mMousePos);
-        mBlock.render(mRenderer, false);
+        mBlock.render(mRenderer, mFilledBlocks);
 
-      
         mCircle.render(mRenderer);
         mUI.render(mRenderer);
+        mWalls.render(mRenderer);
+
+       mFactoryRays.update({ mCircle.getPos().x, mCircle.getPos().y }, { mMousePos.x, mMousePos.y }, true);
+        mFactoryRays.render(mRenderer, mWalls);
         SDL_RenderPresent(mRenderer);
 
         const float deltaTime = (float)SDL_GetTicks() - firstFrame;
@@ -105,8 +117,8 @@ void Setup::run()
 void Setup::adjustDeltaMoving() const
 {
     const float currentTime = (float)SDL_GetTicks();
-    const float deltaTime2 = currentTime - mDelay;
+    float deltaTime2 = currentTime - mLastFrameRate;
     mLastFrameRate = currentTime;
-
-    mCircle.setMultiplierSpeed(deltaTime2 * mUI.getTimeDoubler() * 0.001f);
+    
+    mCircle.setMultiplierSpeed(deltaTime2 * mUI.getTimeDoubler() * 0.01f);
 }

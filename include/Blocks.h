@@ -16,8 +16,8 @@ public:
 	void setAffectOnAll(bool pAffectOnAll);
 	void control(const SDL_Event& pEvent);
 	void setCurrentBlock(size_t pCurrentBlock) noexcept;
-	size_t getCurrentBlock() noexcept;
-	const std::vector<SDL_FRect> getStorage() noexcept;
+	size_t getCurrentBlock() const noexcept;
+	std::vector<SDL_FRect>& getStorage();
 
 	size_t getSizeStrg() noexcept;
 

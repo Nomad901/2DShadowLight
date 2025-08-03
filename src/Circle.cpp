@@ -21,7 +21,7 @@ void Circle::setPos(Vector2f pPos) noexcept
 	mPos = pPos;
 }
 
-constexpr Vector2f Circle::getPos() noexcept
+Vector2f Circle::getPos() noexcept
 {
 	return mPos;
 }
@@ -58,9 +58,9 @@ void Circle::control(float pSpeed, float pArenaWidth, float pArenaHeight)
         mPos.x += speed;
     if (mKeycodes[SDLK_A])
         mPos.x -= speed;
-
-    mPos.x = std::clamp(int32_t(mPos.x), 0, int32_t(pArenaWidth));
-    mPos.y = std::clamp(int32_t(mPos.y), 0, int32_t(pArenaHeight));
+    
+    mPos.x = std::clamp(int32_t(mPos.x), 10, int32_t(pArenaWidth - 15));
+    mPos.y = std::clamp(int32_t(mPos.y), 10, int32_t(pArenaHeight - 15));
 }
 
 void Circle::render(SDL_Renderer* pRenderer) const

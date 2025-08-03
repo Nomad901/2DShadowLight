@@ -10,7 +10,7 @@ public:
 	constexpr int32_t getRadius() noexcept;
 
 	void setPos(Vector2f pPos) noexcept;
-	constexpr Vector2f getPos() noexcept;
+	Vector2f getPos() noexcept;
 	
 	void setCircleFilled(bool pFilledCircle) noexcept;
 	void setCircleColor(float pCircleColor[3]) noexcept;

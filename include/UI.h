@@ -12,10 +12,11 @@ public:
 
 	void control(const SDL_Event& pEvent, bool pActiveProg,
 				 float pColors[3], float pCircleColor[3], 
-				 Blocks& pBlocks, Circle& pCircle);
+				 Blocks& pBlocks, Circle& pCircle, 
+				 bool& pFilledBlocks);
 	void render(SDL_Renderer* pRenderer);
 
 private:
-	float mTimeDoubler{};
+	float mTimeDoubler{ 15.0f };
 };
 
