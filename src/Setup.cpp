@@ -16,9 +16,20 @@ Setup::Setup(int32_t pWidthWin, int32_t pHeightWin)
     mUI.init(mWindow, mRenderer);
     mBlock.init(30);
     mWalls.createArena({ float(pWidthWin),float(pHeightWin) });
-    mCircle.init(20, { float(pWidthWin) / 2, float(pHeightWin) / 2 });
+    mCircle.init(20, 100, { float(pWidthWin) / 2, float(pHeightWin) / 2 });
     mFactoryRays.pushRay({ mCircle.getPos().x, mCircle.getPos().y }, { .0f,.0f });
     mFactoryRays.pushRays({ mCircle.getPos().x, mCircle.getPos().y }, { .0f,.0f }, 100, 50.0f);
+
+    renderTex = SDL_CreateTexture(mRenderer, 
+                                  SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_TARGET, 
+                                  pWidthWin, pHeightWin);
+    if (!renderTex)
+        std::cout << "Couldnt create renderTex in setup()! Erorr: " << SDL_GetError() << '\n';
+    renderTexLight = SDL_CreateTexture(mRenderer, 
+                                       SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_TARGET, 
+                                       pWidthWin, pHeightWin);
+    if (!renderTexLight)
+        std::cout << "Couldnt create renderTexLight in setup()! Erorr: " << SDL_GetError() << '\n';
 }
 
 Setup::~Setup()
@@ -57,6 +68,14 @@ void Setup::setProgActive(bool pIsActive) noexcept
     mIsActive = pIsActive;
 }
 
+bool Setup::pointInCircle()
+{
+    float circleEquation = (mMousePos.x - mCircle.getPos().x) * (mMousePos.x - mCircle.getPos().x) + 
+                           (mMousePos.y - mCircle.getPos().y) * (mMousePos.y - mCircle.getPos().y);
+
+    return circleEquation < (mCircle.getBigRadius() * mCircle.getBigRadius());
+}
+
 void Setup::run()
 {
     while (mIsActive)
@@ -66,7 +85,7 @@ void Setup::run()
         int32_t numKeys = 0;
         SDL_GetKeyboardState(&numKeys);
         mCircle.getStorageKeycodes().reserve(numKeys);
-        
+
         while (SDL_PollEvent(&event))
         {
             ImGui_ImplSDL3_ProcessEvent(&event);
@@ -79,7 +98,11 @@ void Setup::run()
                 mCircle.getStorageKeycodes()[event.key.key] = true;
             if (event.type == SDL_EVENT_KEY_UP)
                 mCircle.getStorageKeycodes()[event.key.key] = false;
-            
+            if (event.key.key == SDLK_ESCAPE)
+            {
+                mIsActive = false;
+                break;
+            }
             mBlock.control(event);
         }
         mCircle.control(5, mWidthWin, mHeightWin);
@@ -91,9 +114,10 @@ void Setup::run()
                                           (uint8_t)(mBlocksColor[1] * 255),
                                           (uint8_t)(mBlocksColor[2] * 255),
                                           255);
+
         const float firstFrame = (float)SDL_GetTicks();
 
-        mUI.control(event, mIsActive, mBlocksColor, mCircleColor, mBlock, mCircle, mFilledBlocks);
+        mUI.control(event, mIsActive, mBlocksColor, mCircleColor, mBlock, mCircle, mFactoryRays, mFilledBlocks);
 
         mBlock.update(mMousePos);
         mBlock.render(mRenderer, mFilledBlocks);
@@ -101,9 +125,37 @@ void Setup::run()
         mCircle.render(mRenderer);
         mUI.render(mRenderer);
         mWalls.render(mRenderer);
+        
+        if (pointInCircle())
+        {
+            //glm::vec2 localVector = { mMousePos.x, mMousePos.y };
+            //glm::mat2x2 model(0.0f);
+            //model[0][0] = 1.0f + mCircle.getPos().x;
+            //model[1][1] = 1.0f + mCircle.getPos().y;
+            //localVector = localVector * model;
+            //localVector = glm::normalize(localVector);
 
-       mFactoryRays.update({ mCircle.getPos().x, mCircle.getPos().y }, { mMousePos.x, mMousePos.y }, true);
+            //localVector *= mCircle.getBigRadius();
+            //glm::mat2x2 reverseModel(0.0f);
+            //reverseModel = glm::inverse(model);
+            //glm::vec2 globalVector = localVector * reverseModel;
+            //mFactoryRays.update(mCircle.getPos(), { globalVector.x, globalVector.y }, true);
+
+            // Get vector from circle center to mouse pos
+            glm::vec2 localVector = { mMousePos.x - mCircle.getPos().x, mMousePos.y - mCircle.getPos().y };
+
+            // Normalize and scale to the circle radius
+            localVector = glm::normalize(localVector) * float(mCircle.getBigRadius());
+
+            // Convert back to global position on the circle's edge
+            glm::vec2 globalVector = { localVector.x + mCircle.getPos().x, localVector.y + mCircle.getPos().y };
+
+            mFactoryRays.update(mCircle.getPos(), { globalVector.x, globalVector.y }, true);
+        }
+        else
+            mFactoryRays.update(mCircle.getPos(), { mMousePos.x, mMousePos.y }, true);
         mFactoryRays.render(mRenderer, mWalls);
+        
         SDL_RenderPresent(mRenderer);
 
         const float deltaTime = (float)SDL_GetTicks() - firstFrame;
@@ -122,3 +174,4 @@ void Setup::adjustDeltaMoving() const
     
     mCircle.setMultiplierSpeed(deltaTime2 * mUI.getTimeDoubler() * 0.01f);
 }
+

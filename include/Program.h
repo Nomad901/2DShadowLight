@@ -19,4 +19,6 @@
 #include <SDL3_image/SDL_image.h>
 #include <SDL3/SDL3_gfxPrimitives.h>
 
+#include <visibility.hpp>
+
 #include "Vector2f.h"

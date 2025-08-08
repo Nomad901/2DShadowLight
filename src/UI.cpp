@@ -21,7 +21,7 @@ const float UI::getTimeDoubler() const noexcept
 
 void UI::control(const SDL_Event& pEvent, bool pActiveProg,
                  float pColors[3], float pCircleColor[3],
-                 Blocks& pBlocks, Circle& pCircle,
+                 Blocks& pBlocks, Circle& pCircle, FactoryRays& pFactory,
                  bool& pFilledBlocks)
 {
     ImGui_ImplSDL3_NewFrame();
@@ -36,7 +36,7 @@ void UI::control(const SDL_Event& pEvent, bool pActiveProg,
     if (firstTime)
     {
         ImGui::SetNextWindowPos({ 100,100 });
-        ImGui::SetNextWindowSize({ 520,180 });
+        ImGui::SetNextWindowSize({ 520,250 });
     }
     ImGui::Begin("Control blocks", &pActiveProg);
 
@@ -59,6 +59,17 @@ void UI::control(const SDL_Event& pEvent, bool pActiveProg,
 
     ImGui::ColorEdit3("Changing color of blocks", pColors);
     ImGui::Checkbox("Fill the blocks", &pFilledBlocks);
+
+    ImGui::Spacing();
+    ImGui::Spacing();
+    ImGui::Separator();
+
+    static int32_t pNumberRays = 100;
+    if (ImGui::SliderInt("Rays", &pNumberRays, 1, 500))
+        pFactory.setNumberRays(pNumberRays);
+    static float pLength = 50.0f;
+    if (ImGui::SliderFloat("Range", &pLength, 10.0f, 500.0f))
+        pFactory.setLength(pLength);
 
     ImGui::Spacing();
     ImGui::Spacing();
@@ -112,7 +123,7 @@ void UI::control(const SDL_Event& pEvent, bool pActiveProg,
     ImGui::Spacing();
 
     if (ImGui::SliderInt("Radius", &tmpRadius, 10, 100))
-        pCircle.setRadius(tmpRadius);
+        pCircle.setRadius(tmpRadius, tmpRadius * 5);
 
     ImGui::Spacing();
 

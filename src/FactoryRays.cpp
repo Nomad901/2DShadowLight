@@ -53,6 +53,7 @@ void FactoryRays::pushRays(std::initializer_list<std::pair<Vector2f, Vector2f>> 
 void FactoryRays::pushRays(const Vector2f& pBeginning, const Vector2f& pEnd, 
 						   int32_t pNumber, float pLength)
 {
+	mNumber = pNumber;
 	mLength = pLength;
 	for (int32_t i = 0; i < pNumber; i++)
 	{
@@ -65,6 +66,16 @@ void FactoryRays::eraseRay(size_t pIdentity)
 	assert(pIdentity < mRayStorage.size());
 
 	mRayStorage.erase(mRayStorage.begin() + pIdentity);
+}
+
+void FactoryRays::setNumberRays(int32_t pNumber)
+{
+	mNumber = pNumber;
+}
+
+void FactoryRays::setLength(float pLength)
+{
+	mLength = pLength;
 }
 
 int32_t FactoryRays::getNumber() const noexcept
@@ -80,6 +91,11 @@ float FactoryRays::getLastLength() const noexcept
 float FactoryRays::getLastAngle() const noexcept
 {
 	return mAngle;
+}
+
+const std::vector<Ray>& FactoryRays::getRayStorage() const noexcept
+{
+	return mRayStorage;
 }
 
 Vector2f FactoryRays::getBeginningRay(size_t pIdentity) const noexcept
@@ -113,9 +129,8 @@ void FactoryRays::update(const Vector2f& pBeginning, const Vector2f& pEnd,
 		}
 		else
 		{
-			int32_t tmpNumber = std::ssize(mRayStorage);
 			mRayStorage.clear();
-			pushRays(pBeginning, pEnd, tmpNumber, mLength);
+			pushRays(pBeginning, pEnd, mNumber, mLength);
 		}
 	}
 }

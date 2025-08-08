@@ -2,6 +2,7 @@
 #include <UI.h>
 #include <Walls.h>
 #include <FactoryRays.h>
+#include <glm.hpp>
 
 enum class FuncType
 {
@@ -29,6 +30,8 @@ public:
 private:
 	void adjustDeltaMoving() const;
 
+	bool pointInCircle();
+
 private:
 	bool mIsActive{true};
 	bool mFilledBlocks{ false };
@@ -49,6 +52,9 @@ private:
 	Blocks mBlock;
 	mutable Circle mCircle;
 	UI mUI;
+
+	SDL_Texture* renderTex;
+	SDL_Texture* renderTexLight;
 
 	Vector2f mMousePos;
 };

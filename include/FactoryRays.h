@@ -19,9 +19,12 @@ public:
 				  int32_t pNumber, float pLength);
 	void eraseRay(size_t pIdentity);
 	
+	void setNumberRays(int32_t pNumber);
+	void setLength(float pLength);
 	int32_t getNumber() const noexcept;
 	float getLastLength() const noexcept;
 	float getLastAngle() const noexcept;
+	const std::vector<Ray>& getRayStorage() const noexcept;
 
 	Vector2f getBeginningRay(size_t pIdentity) const noexcept;
 	Vector2f getEndRay(size_t pIdentity) const noexcept;
@@ -37,6 +40,8 @@ public:
 
 private:
 	std::vector<Ray> mRayStorage;
+
+	int32_t mNumber{ 50 };
 
 	float mLength{};
 	float mAngle{};

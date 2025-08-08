@@ -1,19 +1,26 @@
 #include "Circle.h"
 
-void Circle::init(int32_t pRadius, const Vector2f& pPos)
+void Circle::init(int32_t pRadius, int32_t pRadius2, const Vector2f& pPos)
 {
     mRadius = pRadius;
+    mRadius2 = pRadius2;
     mPos = pPos;
 }
 
-void Circle::setRadius(int32_t pRadius) noexcept
+void Circle::setRadius(int32_t pRadius, int32_t pRadius2) noexcept
 {
 	mRadius = pRadius;
+    mRadius2 = pRadius2;
 }
 
-constexpr int32_t Circle::getRadius() noexcept
+int32_t Circle::getRadius() const noexcept
 {
 	return mRadius;
+}
+
+int32_t Circle::getBigRadius() const noexcept
+{
+    return mRadius2;
 }
 
 void Circle::setPos(Vector2f pPos) noexcept
@@ -83,6 +90,12 @@ void Circle::render(SDL_Renderer* pRenderer) const
                          (uint8_t)(mCircleColor[2] * 255),
                          255);
     }
+    circleRGBA(pRenderer, mPos.x, mPos.y,
+               mRadius2,
+               (uint8_t)(mCircleColor[0] * 255),
+               (uint8_t)(mCircleColor[1] * 255),
+               (uint8_t)(mCircleColor[2] * 255),
+               255);
 }
 
 
