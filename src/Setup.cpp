@@ -16,7 +16,7 @@ Setup::Setup(int32_t pWidthWin, int32_t pHeightWin)
     mUI.init(mWindow, mRenderer);
     mBlock.init(30);
     mWalls.createArena({ float(pWidthWin),float(pHeightWin) });
-    mCircle.init(20, 100, { float(pWidthWin) / 2, float(pHeightWin) / 2 });
+    mCircle.init(20, 150, { float(pWidthWin) / 2, float(pHeightWin) / 2 });
     mFactoryRays.pushRay({ mCircle.getPos().x, mCircle.getPos().y }, { .0f,.0f });
     mFactoryRays.pushRays({ mCircle.getPos().x, mCircle.getPos().y }, { .0f,.0f }, 100, 50.0f);
 
@@ -70,10 +70,12 @@ void Setup::setProgActive(bool pIsActive) noexcept
 
 bool Setup::pointInCircle()
 {
-    float circleEquation = (mMousePos.x - mCircle.getPos().x) * (mMousePos.x - mCircle.getPos().x) + 
-                           (mMousePos.y - mCircle.getPos().y) * (mMousePos.y - mCircle.getPos().y);
+    const float xPart = (mMousePos.x - mCircle.getPos().x);
+    const float yPart = (mMousePos.y - mCircle.getPos().y);
+    const float distanceFromPointToCircle = (xPart * xPart) + (yPart * yPart);
+    const float squaredRadius = (mCircle.getBigRadius() * mCircle.getBigRadius());
 
-    return circleEquation < (mCircle.getBigRadius() * mCircle.getBigRadius());
+    return distanceFromPointToCircle < squaredRadius;
 }
 
 void Setup::run()
@@ -128,34 +130,32 @@ void Setup::run()
         
         if (pointInCircle())
         {
-            //glm::vec2 localVector = { mMousePos.x, mMousePos.y };
-            //glm::mat2x2 model(0.0f);
-            //model[0][0] = 1.0f + mCircle.getPos().x;
-            //model[1][1] = 1.0f + mCircle.getPos().y;
-            //localVector = localVector * model;
-            //localVector = glm::normalize(localVector);
-
-            //localVector *= mCircle.getBigRadius();
-            //glm::mat2x2 reverseModel(0.0f);
-            //reverseModel = glm::inverse(model);
-            //glm::vec2 globalVector = localVector * reverseModel;
-            //mFactoryRays.update(mCircle.getPos(), { globalVector.x, globalVector.y }, true);
-
-            // Get vector from circle center to mouse pos
             glm::vec2 localVector = { mMousePos.x - mCircle.getPos().x, mMousePos.y - mCircle.getPos().y };
-
-            // Normalize and scale to the circle radius
             localVector = glm::normalize(localVector) * float(mCircle.getBigRadius());
-
-            // Convert back to global position on the circle's edge
-            glm::vec2 globalVector = { localVector.x + mCircle.getPos().x, localVector.y + mCircle.getPos().y };
+            const glm::vec2 globalVector = { localVector.x + mCircle.getPos().x, localVector.y + mCircle.getPos().y };
 
             mFactoryRays.update(mCircle.getPos(), { globalVector.x, globalVector.y }, true);
         }
         else
             mFactoryRays.update(mCircle.getPos(), { mMousePos.x, mMousePos.y }, true);
         mFactoryRays.render(mRenderer, mWalls);
-        
+
+        /*std::vector<Sint16> vx;
+        vx.reserve(mFactoryRays.getRayStorage().size());
+        std::vector<Sint16> vy;
+        vy.reserve(mFactoryRays.getRayStorage().size());
+
+        for (auto& i : mFactoryRays.getRayStorage())
+        {
+            vx.push_back(i.getBeginning().x);
+            vx.push_back(i.getEnd().x);
+
+            vy.push_back(i.getBeginning().y);
+            vy.push_back(i.getEnd().y);
+        }
+
+        filledPolygonRGBA(mRenderer, vx.data(), vy.data(), vx.size(), 255, 255, 255, 255);*/
+
         SDL_RenderPresent(mRenderer);
 
         const float deltaTime = (float)SDL_GetTicks() - firstFrame;
