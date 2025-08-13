@@ -18,17 +18,17 @@ Setup::Setup(int32_t pWidthWin, int32_t pHeightWin)
     mWalls.createArena({ float(pWidthWin),float(pHeightWin) });
     mCircle.init(20, 150, { float(pWidthWin) / 2, float(pHeightWin) / 2 });
     mFactoryRays.pushRay({ mCircle.getPos().x, mCircle.getPos().y }, { .0f,.0f });
-    mFactoryRays.pushRays({ mCircle.getPos().x, mCircle.getPos().y }, { .0f,.0f }, 100, 50.0f);
+    mFactoryRays.pushRays({ mCircle.getPos().x, mCircle.getPos().y }, { .0f,.0f }, 200, 40.0f);
 
-    renderTex = SDL_CreateTexture(mRenderer, 
+    mRenderTex = SDL_CreateTexture(mRenderer, 
                                   SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_TARGET, 
                                   pWidthWin, pHeightWin);
-    if (!renderTex)
+    if (!mRenderTex)
         std::cout << "Couldnt create renderTex in setup()! Erorr: " << SDL_GetError() << '\n';
-    renderTexLight = SDL_CreateTexture(mRenderer, 
+    mRenderTexLight = SDL_CreateTexture(mRenderer, 
                                        SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_TARGET, 
                                        pWidthWin, pHeightWin);
-    if (!renderTexLight)
+    if (!mRenderTexLight)
         std::cout << "Couldnt create renderTexLight in setup()! Erorr: " << SDL_GetError() << '\n';
 }
 
@@ -105,6 +105,7 @@ void Setup::run()
                 mIsActive = false;
                 break;
             }
+
             mBlock.control(event);
         }
         mCircle.control(5, mWidthWin, mHeightWin);
@@ -125,8 +126,8 @@ void Setup::run()
         mBlock.render(mRenderer, mFilledBlocks);
 
         mCircle.render(mRenderer);
-        mUI.render(mRenderer);
         mWalls.render(mRenderer);
+        mUI.render(mRenderer);
         
         if (pointInCircle())
         {
@@ -140,21 +141,7 @@ void Setup::run()
             mFactoryRays.update(mCircle.getPos(), { mMousePos.x, mMousePos.y }, true);
         mFactoryRays.render(mRenderer, mWalls);
 
-        /*std::vector<Sint16> vx;
-        vx.reserve(mFactoryRays.getRayStorage().size());
-        std::vector<Sint16> vy;
-        vy.reserve(mFactoryRays.getRayStorage().size());
-
-        for (auto& i : mFactoryRays.getRayStorage())
-        {
-            vx.push_back(i.getBeginning().x);
-            vx.push_back(i.getEnd().x);
-
-            vy.push_back(i.getBeginning().y);
-            vy.push_back(i.getEnd().y);
-        }
-
-        filledPolygonRGBA(mRenderer, vx.data(), vy.data(), vx.size(), 255, 255, 255, 255);*/
+        //renderShadows();
 
         SDL_RenderPresent(mRenderer);
 
@@ -173,5 +160,83 @@ void Setup::adjustDeltaMoving() const
     mLastFrameRate = currentTime;
     
     mCircle.setMultiplierSpeed(deltaTime2 * mUI.getTimeDoubler() * 0.01f);
+}
+
+
+//TODO: in the future maybe make instead of lines a triangle 
+void Setup::renderShadows()
+{
+    SDL_SetRenderTarget(mRenderer, mRenderTexLight);
+    SDL_SetRenderDrawColor(mRenderer, 0, 0, 0, 0);
+    SDL_RenderClear(mRenderer);
+
+
+    auto sortedRays = mFactoryRays.getRayStorage();
+    if (sortedRays.empty())
+        return;
+
+    auto sortCond = [this](const Ray& pFirst, const Ray& pSecond)
+        {
+            float angleA = atan2(pFirst.getEnd().x - mCircle.getPos().x,
+                                 pFirst.getEnd().y - mCircle.getPos().y);
+            float angleB = atan2(pSecond.getEnd().x - mCircle.getPos().x, 
+                                 pSecond.getEnd().y - mCircle.getPos().y);
+            return angleA < angleB;
+        };
+    std::sort(sortedRays.begin(), sortedRays.end(), sortCond);
+
+    std::vector<SDL_Vertex> shadowVerts;
+    shadowVerts.reserve(mFactoryRays.getNumber());
+
+    const SDL_Color shadowColor = { 255,255,255,180 };
+    const float shadowLength = mFactoryRays.getLength();
+
+    for (size_t i = 0; i < sortedRays.size(); ++i)
+    {
+        size_t next = (i + 1) % sortedRays.size();
+        SDL_FPoint lightPos = { mCircle.getPos().x, mCircle.getPos().y };
+        SDL_FPoint dir1 =
+        {
+            sortedRays[i].getEnd().x - lightPos.x,
+            sortedRays[i].getEnd().y - lightPos.y
+        };
+        SDL_FPoint dir2 =
+        {
+            sortedRays[next].getEnd().x - lightPos.x,
+            sortedRays[next].getEnd().y - lightPos.y
+        };
+
+        float length1 = sqrt((dir1.x * dir1.x) + (dir1.y * dir1.y));
+        float length2 = sqrt((dir2.x * dir2.x) + (dir2.x * dir2.y));
+
+        SDL_FPoint point1 =
+        {
+            sortedRays[i].getEnd().x + (dir1.x / length1) * shadowLength,
+            sortedRays[i].getEnd().y + (dir1.y / length1) * shadowLength
+        };
+        SDL_FPoint point2 =
+        {
+            sortedRays[next].getEnd().x + (dir2.x / length2) * shadowLength,
+            sortedRays[next].getEnd().y + (dir2.y / length2) * shadowLength
+        };
+
+        SDL_Vertex vertecies[3] =
+        {
+            {{lightPos.x, lightPos.y},{shadowColor.r, shadowColor.g,
+                                       shadowColor.b, shadowColor.a}, {0,0}},
+            {{point1.x, point1.y},{shadowColor.r, shadowColor.g,
+                                   shadowColor.b, shadowColor.a},{0,0}},
+            {{point2.x, point2.y},{shadowColor.r, shadowColor.g,
+                                   shadowColor.b, shadowColor.a},{0,0}}
+        };
+        shadowVerts.emplace_back(vertecies[0]);
+        shadowVerts.emplace_back(vertecies[1]);
+        shadowVerts.emplace_back(vertecies[2]);
+    }
+    SDL_SetRenderDrawBlendMode(mRenderer, SDL_BLENDMODE_BLEND);
+    SDL_RenderGeometry(mRenderer, nullptr, shadowVerts.data(), shadowVerts.size(), nullptr, 0);
+
+    SDL_SetRenderTarget(mRenderer, nullptr);
+    SDL_RenderTexture(mRenderer, mRenderTexLight, nullptr, nullptr);
 }
 
