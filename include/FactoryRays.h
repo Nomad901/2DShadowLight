@@ -1,6 +1,9 @@
 #pragma once
+#include <random>
+
 #include "Program.h"
 #include "Ray.h"
+#include "glm.hpp"
 
 class FactoryRays
 {
@@ -21,6 +24,8 @@ public:
 	
 	void setNumberRays(int32_t pNumber);
 	void setLength(float pLength);
+	int32_t getNumberRays() const noexcept;
+	float getLength() const noexcept;
 	int32_t getNumber() const noexcept;
 	float getLastLength() const noexcept;
 	float getLastAngle() const noexcept;
@@ -37,7 +42,7 @@ public:
 
 	void render(SDL_Renderer* pRenderer) const noexcept;
 	void render(SDL_Renderer* pRenderer, Walls pWall);
-
+	
 private:
 	std::vector<Ray> mRayStorage;
 
@@ -48,11 +53,3 @@ private:
 };
 
 
-
-//Resources::Vector2f pos = { 500, 400 };
-//mStrgRays.reserve(40);
-//for (int32_t i = 0; i < mStrgRays.capacity(); i++)
-//{
-//	Ray newRay = { Resources::sVector2f, {500,400}, float(float(i) * 3.14 / M_PI) };
-//	mStrgRays.emplace_back(std::move(newRay));
-//}
