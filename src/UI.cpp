@@ -64,10 +64,10 @@ void UI::control(const SDL_Event& pEvent, bool pActiveProg,
     ImGui::Spacing();
     ImGui::Separator();
 
-    static int32_t pNumberRays = 100;
+    static int32_t pNumberRays = pFactory.getNumberRays();
     if (ImGui::SliderInt("Rays", &pNumberRays, 1, 500))
         pFactory.setNumberRays(pNumberRays);
-    static float pLength = 50.0f;
+    static float pLength = pFactory.getLength();
     if (ImGui::SliderFloat("Range", &pLength, 10.0f, 500.0f))
         pFactory.setLength(pLength);
 
