@@ -78,6 +78,16 @@ void FactoryRays::setLength(float pLength)
 	mLength = pLength;
 }
 
+int32_t FactoryRays::getNumberRays() const noexcept
+{
+	return mNumber;
+}
+
+float FactoryRays::getLength() const noexcept
+{
+	return mLength;
+}
+
 int32_t FactoryRays::getNumber() const noexcept
 {
 	return std::ssize(mRayStorage);
@@ -175,6 +185,7 @@ void FactoryRays::render(SDL_Renderer* pRenderer, Walls pWall)
 		}
 		if (record < std::numeric_limits<float>::infinity())
 		{
+			ray.setEnd(closest);
 			SDL_RenderLine(pRenderer, ray.getBeginning().x, ray.getBeginning().y, closest.x, closest.y);
 		}
 	}
